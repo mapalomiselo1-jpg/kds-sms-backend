@@ -13,9 +13,9 @@ app.use(cors());
 const API_KEY = process.env.API_KEY;
 const USERNAME = process.env.USERNAME;
 
-// Safety check (prevents silent failure)
+// HARD FAIL IF MISSING (important)
 if (!API_KEY || !USERNAME) {
-  console.error("❌ Missing environment variables (API_KEY or USERNAME)");
+  console.error("❌ Missing API_KEY or USERNAME in environment variables");
 }
 
 // ======================
@@ -41,22 +41,24 @@ app.post("/send-sms", async (req, res) => {
   }
 
   try {
-   const response = await fetch(
-  "https://api.africastalking.com/version1/messaging",
-  {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "Authorization":
-        "Basic " + Buffer.from(`${USERNAME}:${API_KEY}`).toString("base64")
-    },
-    body: new URLSearchParams({
-      username: USERNAME,
-      to: phone,
-      message: message
-    })
-  }
-);
+    // ======================
+    // AFRICASTALKING REQUEST
+    // ======================
+    const response = await fetch(
+      "https://api.africastalking.com/version1/messaging",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "apiKey": API_KEY
+        },
+        body: new URLSearchParams({
+          username: USERNAME,
+          to: phone,
+          message: message
+        })
+      }
+    );
 
     const text = await response.text();
 
