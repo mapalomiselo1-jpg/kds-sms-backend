@@ -41,21 +41,22 @@ app.post("/send-sms", async (req, res) => {
   }
 
   try {
-    const response = await fetch(
-      "https://api.africastalking.com/version1/messaging",
-      {
-        method: "POST",
-        headers: {
-          "X-API-Key": API_KEY,
-          "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: new URLSearchParams({
-          username: USERNAME,
-          to: phone,
-          message: message
-        })
-      }
-    );
+   const response = await fetch(
+  "https://api.africastalking.com/version1/messaging",
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Authorization":
+        "Basic " + Buffer.from(`${USERNAME}:${API_KEY}`).toString("base64")
+    },
+    body: new URLSearchParams({
+      username: USERNAME,
+      to: phone,
+      message: message
+    })
+  }
+);
 
     const text = await response.text();
 
