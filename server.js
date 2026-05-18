@@ -4,17 +4,22 @@ import fetch from "node-fetch";
 
 const app = express();
 
-app.use(express.json());
 app.use(cors());
+app.use(express.json());
 
 // ======================
-// ENV CONFIG
+// ENV
 // ======================
 const API_KEY = process.env.API_KEY;
 const USERNAME = process.env.USERNAME;
 
+// 🔥 DEBUG CHECKS (IMPORTANT)
+console.log("API KEY EXISTS:", !!API_KEY);
+console.log("USERNAME:", USERNAME);
+
+// HARD FAIL SAFETY
 if (!API_KEY || !USERNAME) {
-  console.error("❌ Missing API_KEY or USERNAME in environment variables");
+  console.error("❌ Missing API_KEY or USERNAME in env");
 }
 
 // ======================
@@ -40,16 +45,14 @@ app.post("/send-sms", async (req, res) => {
   }
 
   try {
-    // ======================
-    // AFRICA'S TALKING REQUEST
-    // ======================
     const response = await fetch(
       "https://api.africastalking.com/version1/messaging",
       {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
-          "apiKey": API_KEY
+          "apiKey": API_KEY,
+          "Accept": "application/json"
         },
         body: new URLSearchParams({
           username: USERNAME,
@@ -59,17 +62,18 @@ app.post("/send-sms", async (req, res) => {
       }
     );
 
-    // IMPORTANT: parse JSON (NOT text)
-    const data = await response.json();
+    // read raw response first (prevents JSON crash)
+    const text = await response.text();
 
-    console.log("📨 Parsed response:");
-    console.log(JSON.stringify(data, null, 2));
-
-    if (!response.ok) {
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error("❌ Non-JSON response from Africa's Talking:", text);
       return res.status(500).json({
         success: false,
-        error: "Africa's Talking request failed",
-        raw: data
+        error: "Invalid response from SMS provider",
+        raw: text
       });
     }
 
@@ -77,15 +81,11 @@ app.post("/send-sms", async (req, res) => {
 
     const success = recipients.filter(r => r.status === "Success");
     const sent = recipients.filter(r => r.status === "Sent");
-    const failed = recipients.filter(
-      r => r.status !== "Success" && r.status !== "Sent"
-    );
 
     return res.json({
-      success: success.length > 0,
+      success: success.length > 0 || sent.length > 0,
       successCount: success.length,
       sentCount: sent.length,
-      failedCount: failed.length,
       recipients,
       raw: data
     });
