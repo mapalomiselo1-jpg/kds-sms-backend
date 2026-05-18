@@ -13,7 +13,6 @@ app.use(cors());
 const API_KEY = process.env.API_KEY;
 const USERNAME = process.env.USERNAME;
 
-// HARD FAIL IF MISSING (important)
 if (!API_KEY || !USERNAME) {
   console.error("❌ Missing API_KEY or USERNAME in environment variables");
 }
@@ -42,7 +41,7 @@ app.post("/send-sms", async (req, res) => {
 
   try {
     // ======================
-    // AFRICASTALKING REQUEST
+    // AFRICA'S TALKING REQUEST
     // ======================
     const response = await fetch(
       "https://api.africastalking.com/version1/messaging",
@@ -60,21 +59,35 @@ app.post("/send-sms", async (req, res) => {
       }
     );
 
-    const text = await response.text();
+    // IMPORTANT: parse JSON (NOT text)
+    const data = await response.json();
 
-    console.log("📨 Raw response:", text);
+    console.log("📨 Parsed response:");
+    console.log(JSON.stringify(data, null, 2));
 
     if (!response.ok) {
       return res.status(500).json({
         success: false,
         error: "Africa's Talking request failed",
-        raw: text
+        raw: data
       });
     }
 
+    const recipients = data?.SMSMessageData?.Recipients || [];
+
+    const success = recipients.filter(r => r.status === "Success");
+    const sent = recipients.filter(r => r.status === "Sent");
+    const failed = recipients.filter(
+      r => r.status !== "Success" && r.status !== "Sent"
+    );
+
     return res.json({
-      success: true,
-      raw: text
+      success: success.length > 0,
+      successCount: success.length,
+      sentCount: sent.length,
+      failedCount: failed.length,
+      recipients,
+      raw: data
     });
 
   } catch (err) {
@@ -88,7 +101,7 @@ app.post("/send-sms", async (req, res) => {
 });
 
 // ======================
-// START SERVER (RENDER READY)
+// START SERVER
 // ======================
 const PORT = process.env.PORT || 3000;
 
